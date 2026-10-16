@@ -1,0 +1,176 @@
+# =========================
+# ASP.NET Core (.NET 10)
+# =========================
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+bld/
+[Ll]og/
+[Ll]ogs/
+
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# MSBuild
+*.binlog
+*.tlog
+Generated\ Files/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+# Publish / deploy
+publish/
+*.publishsettings
+*.pubxml
+*.pubxml.user
+PublishProfiles/
+
+# Test results / coverage
+[Tt]est[Rr]esult*/
+*.trx
+TestResults/
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+[Cc]overage[Rr]eport/
+
+# Entity Framework
+*.mdf
+*.ldf
+*.ndf
+
+# ASP.NET Core user secrets / local settings
+appsettings.*.local.json
+appsettings.Local.json
+secrets.json
+
+# =========================
+# Angular / Node
+# =========================
+
+# Dependencies
+node_modules/
+jspm_packages/
+bower_components/
+
+# Compiled output
+dist/
+dist-*/
+tmp/
+out-tsc/
+lib/
+build/
+
+# Angular CLI
+.angular/
+.angular/cache/
+
+# TypeScript / IDEs
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Test output
+coverage/
+.nyc_output/
+karma-coverage/
+*.lcov
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# =========================
+# Visual Studio
+# =========================
+.vs/
+*.vspscc
+*.vssscc
+*.sln.docstates
+*.suo
+*.user
+*.userosscache
+*.userprefs
+*.dotCover
+*.ncrunch*
+
+# =========================
+# VS Code
+# =========================
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+*.code-workspace
+.history/
+
+# =========================
+# JetBrains (Rider / WebStorm / IntelliJ)
+# =========================
+.idea/
+*.sln.iml
+*.iml
+.idea_modules/
+out/
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/shelf/
+.idea/**/contentModel.xml
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/gradle.xml
+.idea/**/libraries/
+.idea/**/*.db
+.idea/httpRequests/
+*.iws
+*.ipr
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+*.swo
+
+Internal/

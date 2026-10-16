@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MovePlanner.Api\MovePlanner.Api.csproj" />
+    <ProjectReference Include="..\..\src\MovePlanner.Application\MovePlanner.Application.csproj" />
+    <ProjectReference Include="..\..\src\MovePlanner.Domain\MovePlanner.Domain.csproj" />
+    <ProjectReference Include="..\..\src\MovePlanner.Infrastructure\MovePlanner.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

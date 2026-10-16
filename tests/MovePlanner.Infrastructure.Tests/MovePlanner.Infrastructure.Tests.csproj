@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MovePlanner.Infrastructure\MovePlanner.Infrastructure.csproj" />
+    <ProjectReference Include="..\MovePlanner.Tests.Support\MovePlanner.Tests.Support.csproj" />
+  </ItemGroup>
+
+</Project>

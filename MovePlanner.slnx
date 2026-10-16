@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MovePlanner.Api/MovePlanner.Api.csproj" />
+    <Project Path="src/MovePlanner.Application/MovePlanner.Application.csproj" />
+    <Project Path="src/MovePlanner.Domain/MovePlanner.Domain.csproj" />
+    <Project Path="src/MovePlanner.Infrastructure/MovePlanner.Infrastructure.csproj" />
+  </Folder>
+</Solution>

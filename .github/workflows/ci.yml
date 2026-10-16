@@ -16,6 +16,37 @@ concurrency:
 
 
 jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      DOTNET_NOLOGO: true
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: Directory.Packages.props
+
+      - name: Restore
+        run: dotnet restore MovePlanner.slnx
+
+      - name: Build
+        run: dotnet build MovePlanner.slnx --no-restore -warnaserror
+
+      - name: Check formatting
+        run: dotnet format MovePlanner.slnx --no-restore --verify-no-changes
+
+      - name: Test
+        run: dotnet test MovePlanner.slnx --no-build
+
   single-commit:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

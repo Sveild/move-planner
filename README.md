@@ -11,3 +11,7 @@ A web app for planning an international move. It is built from modules, starting
 **Backend**
 
 - ASP.NET Core
+
+## Decisions
+
+Architecture decisions are recorded in [decisions.md](decisions.md).

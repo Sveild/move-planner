@@ -5,4 +5,12 @@
     <Project Path="src/MovePlanner.Domain/MovePlanner.Domain.csproj" />
     <Project Path="src/MovePlanner.Infrastructure/MovePlanner.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MovePlanner.Api.IntegrationTests/MovePlanner.Api.IntegrationTests.csproj" />
+    <Project Path="tests/MovePlanner.Application.Tests/MovePlanner.Application.Tests.csproj" />
+    <Project Path="tests/MovePlanner.Architecture.Tests/MovePlanner.Architecture.Tests.csproj" />
+    <Project Path="tests/MovePlanner.Domain.Tests/MovePlanner.Domain.Tests.csproj" />
+    <Project Path="tests/MovePlanner.Infrastructure.Tests/MovePlanner.Infrastructure.Tests.csproj" />
+    <Project Path="tests/MovePlanner.Tests.Support/MovePlanner.Tests.Support.csproj" />
+  </Folder>
 </Solution>

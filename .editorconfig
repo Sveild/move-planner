@@ -257,6 +257,12 @@ dotnet_diagnostic.MA0004.severity = none
 # Public types are the normal, intended layout of these class libraries.
 dotnet_diagnostic.CA1515.severity = none
 
+# CA1716: Identifiers should not match keywords.
+# 'Error' is the natural name for the type carried by Result<T>. The collision is only with a
+# VB.NET keyword, and this solution contains no VB projects.
+[src/MovePlanner.Application/Common/Error.cs]
+dotnet_diagnostic.CA1716.severity = none
+
 ############################
 # Test-specific overrides  #
 ############################

@@ -6,11 +6,66 @@ A web app for planning an international move. It is built from modules, starting
 
 **Frontend**
 
-- Angular
+- Angular (planned; the client has not been added yet)
 
 **Backend**
 
-- ASP.NET Core
+- .NET 10 / ASP.NET Core
+- PostgreSQL through Entity Framework Core
+- xUnit v3 on Microsoft.Testing.Platform, with Testcontainers for the infrastructure and integration tests
+
+## Prerequisites
+
+- .NET 10 SDK
+- Docker, for the local database and for the tests that use Testcontainers
+- Node.js and the Angular CLI, once the client is added
+
+## Architecture
+
+The solution follows a layered clean architecture, recorded as
+[ADR-0001](decisions.md#adr-0001-multi-project-clean-architecture). A project may only reference the
+projects below it:
+
+- `src/MovePlanner.Domain` — entities, value objects and domain rules. References nothing.
+- `src/MovePlanner.Application` — use cases. References Domain.
+- `src/MovePlanner.Infrastructure` — persistence and other adapters. References Application.
+- `src/MovePlanner.Api` — HTTP entry point and composition root. References Application and
+  Infrastructure.
+
+The tests live in `tests`:
+
+- `MovePlanner.Domain.Tests`, `MovePlanner.Application.Tests` and `MovePlanner.Infrastructure.Tests`
+  hold the unit tests of each layer.
+- `MovePlanner.Architecture.Tests` fails the build when a dependency points the wrong way.
+- `MovePlanner.Api.IntegrationTests` exercises the API end to end.
+- `MovePlanner.Tests.Support` holds shared fixtures, such as the PostgreSQL container used by the
+  infrastructure and integration tests.
+
+## Development
+
+Build, verify formatting and run the tests:
+
+```sh
+dotnet build MovePlanner.slnx -warnaserror
+dotnet format MovePlanner.slnx --verify-no-changes
+dotnet test MovePlanner.slnx
+```
+
+`dotnet test` starts PostgreSQL containers through Testcontainers, so Docker has to be running.
+Collect a coverage report with:
+
+```sh
+dotnet test MovePlanner.slnx --coverage --coverage-output-format cobertura
+```
+
+Start the API; it needs a configured connection string and a running database, described below:
+
+```sh
+dotnet run --project src/MovePlanner.Api
+```
+
+The analyzer and suppression rules are in [CONTRIBUTING.md](CONTRIBUTING.md), and the conventions for
+automated agents are in [AGENTS.md](AGENTS.md).
 
 ## Configuration
 
@@ -30,10 +85,27 @@ string fails immediately instead of at first use.
 ## Database
 
 The API uses PostgreSQL through Entity Framework Core. Migrations live in
-`src/MovePlanner.Infrastructure`, with the API project as the startup project. The Entity Framework
-Core tools read the connection string from the `Database__ConnectionString` environment variable.
+`src/MovePlanner.Infrastructure`, with the API project as the startup project.
+
+Start a local database with Docker. The credentials come from an untracked `.env` file, so copy the
+committed example before the first run:
 
 ```sh
+cp .env.example .env
+docker compose up -d
+docker compose down
+```
+
+pgAdmin comes up alongside the database at http://localhost:5050, using the email and password from
+`.env`. Register the server with host `postgres`, port `5432` and the PostgreSQL credentials from the
+same file.
+
+The Entity Framework Core tools read the connection string from the `Database__ConnectionString`
+environment variable. Apply the migrations and list them:
+
+```sh
+Database__ConnectionString="Host=localhost;Port=5432;Database=moveplanner;Username=moveplanner;Password=moveplanner" \
+  dotnet ef database update --project src/MovePlanner.Infrastructure --startup-project src/MovePlanner.Api
 Database__ConnectionString="Host=localhost;Port=5432;Database=moveplanner;Username=moveplanner;Password=moveplanner" \
   dotnet ef migrations list --project src/MovePlanner.Infrastructure --startup-project src/MovePlanner.Api
 ```

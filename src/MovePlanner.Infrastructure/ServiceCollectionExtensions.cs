@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace MovePlanner.Infrastructure;
 
@@ -29,6 +31,12 @@ public static class ServiceCollectionExtensions
             .Bind(configuration.GetSection(DatabaseOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+        services.AddDbContext<AppDbContext>((provider, options) =>
+        {
+            DatabaseOptions databaseOptions = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+            options.UseNpgsql(databaseOptions.ConnectionString);
+        });
 
         return services;
     }

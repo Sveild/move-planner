@@ -278,6 +278,12 @@ dotnet_diagnostic.CA1861.severity = none
 # (with underscores), so the suffix adds noise without value.
 dotnet_naming_rule.async_methods_should_end_with_async.severity = none
 
+# CA1812/S1144: the handlers used by the dependency injection tests are only constructed by the
+# DI container through reflection, which the analyzers cannot follow.
+[tests/MovePlanner.Application.Tests/DependencyInjectionTests.cs]
+dotnet_diagnostic.CA1812.severity = none
+dotnet_diagnostic.S1144.severity = none
+
 ############################
 # EF Core migrations       #
 ############################

@@ -27,6 +27,17 @@ dotnet user-secrets set "Database:ConnectionString" "Host=localhost;Port=5432;Da
 Required settings are validated when the application starts, so a missing or invalid connection
 string fails immediately instead of at first use.
 
+## Database
+
+The API uses PostgreSQL through Entity Framework Core. Migrations live in
+`src/MovePlanner.Infrastructure`, with the API project as the startup project. The Entity Framework
+Core tools read the connection string from the `Database__ConnectionString` environment variable.
+
+```sh
+Database__ConnectionString="Host=localhost;Port=5432;Database=moveplanner;Username=moveplanner;Password=moveplanner" \
+  dotnet ef migrations list --project src/MovePlanner.Infrastructure --startup-project src/MovePlanner.Api
+```
+
 ## Decisions
 
 Architecture decisions are recorded in [decisions.md](decisions.md).

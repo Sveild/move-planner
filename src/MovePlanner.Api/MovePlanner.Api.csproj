@@ -5,6 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MovePlanner.Application\MovePlanner.Application.csproj" />
     <ProjectReference Include="..\MovePlanner.Infrastructure\MovePlanner.Infrastructure.csproj" />
   </ItemGroup>

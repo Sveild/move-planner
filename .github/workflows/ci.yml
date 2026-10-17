@@ -56,7 +56,7 @@ jobs:
 
       - name: Generate coverage report
         if: always()
-        run: reportgenerator -reports:TestResults/*.cobertura.xml -targetdir:coveragereport -reporttypes:'Html;MarkdownSummaryGithub' -assemblyfilters:'+MovePlanner.Domain;+MovePlanner.Application;+MovePlanner.Infrastructure;+MovePlanner.Api'
+        run: reportgenerator -reports:TestResults/*.cobertura.xml -targetdir:coveragereport -reporttypes:'Html;MarkdownSummaryGithub' -assemblyfilters:'+MovePlanner.Domain;+MovePlanner.Application;+MovePlanner.Infrastructure;+MovePlanner.Api' -classfilters:'-MovePlanner.Infrastructure.Migrations.*'
 
       - name: Add coverage to summary
         if: always()

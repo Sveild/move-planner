@@ -18,6 +18,9 @@ concurrency:
 jobs:
   build:
     name: Build and test
+    permissions:
+      contents: read
+      pull-requests: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -45,7 +48,34 @@ jobs:
         run: dotnet format MovePlanner.slnx --no-restore --verify-no-changes
 
       - name: Test
-        run: dotnet test MovePlanner.slnx --no-build
+        run: dotnet test MovePlanner.slnx --no-build --coverage --coverage-output-format cobertura
+
+      - name: Install report generator
+        if: always()
+        run: dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.10
+
+      - name: Generate coverage report
+        if: always()
+        run: reportgenerator -reports:TestResults/*.cobertura.xml -targetdir:coveragereport -reporttypes:'Html;MarkdownSummaryGithub' -assemblyfilters:'+MovePlanner.Domain;+MovePlanner.Application;+MovePlanner.Infrastructure;+MovePlanner.Api'
+
+      - name: Add coverage to summary
+        if: always()
+        run: cat coveragereport/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment coverage on the pull request
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: coverage
+          path: coveragereport/SummaryGithub.md
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coveragereport
+          if-no-files-found: warn
 
   single-commit:
     if: github.event_name == 'pull_request'

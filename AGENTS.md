@@ -2,9 +2,12 @@
 
 Conventions for automated agents working in this repository.
 
+## Assignment
+
+- Assign every issue and pull request to `Sveild`.
+
 ## Pull requests
 
-- Always assign the pull request to `Sveild`.
 - Branch name: `<issue-number>-<slug>` (for example `24-application-dependency-injection`), created from the latest `origin/main`.
 - Exactly one commit per pull request. CI enforces this, so amend and force-push instead of adding commits.
 - Commit message: a conventional prefix (`feat:`, `fix:`, `chore:`, `ci:`, `docs:`, `test:`), a subject, a blank line, `-` bullets, then `Refs #<issue>`.

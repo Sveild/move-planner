@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using MovePlanner.Api.Endpoints;
 using MovePlanner.Application;
 using MovePlanner.Infrastructure;
 
@@ -7,6 +8,7 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
+app.MapEndpoints();
 
 await app.RunAsync();
 

@@ -10,7 +10,7 @@ Conventions for automated agents working in this repository.
 
 - Branch name: `<issue-number>-<slug>` (for example `24-application-dependency-injection`), created from the latest `origin/main`.
 - Exactly one commit per pull request. CI enforces this, so amend and force-push instead of adding commits.
-- Commit message: a conventional prefix (`feat:`, `fix:`, `chore:`, `ci:`, `docs:`, `test:`), a subject, a blank line, `-` bullets, then `Refs #<issue>`.
+- Commit subject: `<issue-number>_<slug>`, with the same slug as the branch (for example `24_application-dependency-injection`). Every commit is an issue, so the subject names it. Then a blank line, `-` bullets, and `Refs #<issue>`.
 - Fill in `.github/pull_request_template.md` when opening the pull request.
 - After opening the pull request, report its URL and stop. Do not poll or wait for CI checks; `Sveild` reviews and merges.
 

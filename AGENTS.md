@@ -12,6 +12,7 @@ Conventions for automated agents working in this repository.
 - Exactly one commit per pull request. CI enforces this, so amend and force-push instead of adding commits.
 - Commit message: a conventional prefix (`feat:`, `fix:`, `chore:`, `ci:`, `docs:`, `test:`), a subject, a blank line, `-` bullets, then `Refs #<issue>`.
 - Fill in `.github/pull_request_template.md` when opening the pull request.
+- After opening the pull request, report its URL and stop. Do not poll or wait for CI checks; `Sveild` reviews and merges.
 
 ## Commands
 

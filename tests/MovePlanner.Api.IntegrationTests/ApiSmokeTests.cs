@@ -2,6 +2,7 @@ using System.Data;
 using System.Net;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using MovePlanner.Infrastructure;
 using MovePlanner.Tests.Support;
 using Npgsql;
 using Xunit;
@@ -9,8 +10,9 @@ using Xunit;
 namespace MovePlanner.Api.IntegrationTests;
 
 [Collection(PostgresCollectionDefinition.Name)]
-public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>>, IDisposable
 {
+    private readonly WebApplicationFactory<Program> _factory;
     private readonly HttpClient _client;
     private readonly PostgresContainerFixture _postgres;
 
@@ -19,8 +21,17 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         ArgumentNullException.ThrowIfNull(factory);
         ArgumentNullException.ThrowIfNull(postgres);
 
-        _client = factory.CreateClient();
         _postgres = postgres;
+        _factory = factory.WithWebHostBuilder(builder => builder.UseSetting(
+            $"{DatabaseOptions.SectionName}:{nameof(DatabaseOptions.ConnectionString)}",
+            postgres.ConnectionString));
+        _client = _factory.CreateClient();
+    }
+
+    public void Dispose()
+    {
+        _client.Dispose();
+        _factory.Dispose();
     }
 
     [Fact]

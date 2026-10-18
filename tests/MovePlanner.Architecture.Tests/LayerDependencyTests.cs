@@ -58,6 +58,23 @@ public sealed class LayerDependencyTests
             string.Join(", ", result.FailingTypeNames ?? []));
     }
 
+    [Fact]
+    public void Result_and_error_types_no_longer_exist()
+    {
+        string[] removed = ["Result", "Result`1", "Error", "ErrorKind", "ResultExtensions"];
+
+        string[] remaining =
+        [
+            .. new[] { ApplicationAssembly, ApiAssembly }
+                .SelectMany(assembly => Assembly.Load(assembly).GetTypes())
+                .Select(type => type.Name)
+                .Where(name => removed.Contains(name, StringComparer.Ordinal)),
+        ];
+
+        remaining.Should().BeEmpty(
+            "handlers signal failure by throwing, not by returning Result or Error values (ADR-0003)");
+    }
+
     private static void AssertNoDependencyOn(string assembly, params string[] forbidden)
     {
         TestResult result = Types

@@ -5,7 +5,9 @@ namespace MovePlanner.Api.Endpoints;
 
 /// <summary>
 /// Maps endpoints that bind an Api request, map it to an Application command or query, run the
-/// matching handler and turn the handler's result into an HTTP response.
+/// matching handler and return the handler's value as a 200 response. An expected failure is a
+/// typed exception thrown by the handler, which the global exception handler turns into a
+/// ProblemDetails response.
 /// </summary>
 public static class HandlerEndpointExtensions
 {
@@ -115,9 +117,9 @@ public static class HandlerEndpointExtensions
         CancellationToken cancellationToken)
         where TRequest : IQueryRequest<TQuery>
     {
-        Result<TResponse> result = await handler.HandleAsync(request.ToQuery(), cancellationToken);
+        TResponse response = await handler.HandleAsync(request.ToQuery(), cancellationToken);
 
-        return result.ToHttpResult();
+        return Results.Ok(response);
     }
 
     private static async Task<IResult> HandleCommandAsync<TRequest, TCommand, TResponse>(
@@ -126,8 +128,8 @@ public static class HandlerEndpointExtensions
         CancellationToken cancellationToken)
         where TRequest : ICommandRequest<TCommand>
     {
-        Result<TResponse> result = await handler.HandleAsync(request.ToCommand(), cancellationToken);
+        TResponse response = await handler.HandleAsync(request.ToCommand(), cancellationToken);
 
-        return result.ToHttpResult();
+        return Results.Ok(response);
     }
 }

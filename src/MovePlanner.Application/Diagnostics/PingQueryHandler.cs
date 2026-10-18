@@ -4,9 +4,11 @@ namespace MovePlanner.Application.Diagnostics;
 
 /// <summary>
 /// Answers a <see cref="PingQuery"/> by echoing its message back. The class is static, so Wolverine
-/// needs <see cref="WolverineHandlerAttribute"/> to discover it.
+/// needs <see cref="WolverineHandlerAttribute"/> to discover it. The handler only reads, so it is
+/// explicitly kept out of the transactional middleware.
 /// </summary>
 [WolverineHandler]
+[NonTransactional]
 public static class PingQueryHandler
 {
     /// <summary>Handles <paramref name="query"/>.</summary>

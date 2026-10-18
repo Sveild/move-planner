@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Wolverine.EntityFrameworkCore;
 
 namespace MovePlanner.Infrastructure;
 
@@ -32,11 +33,13 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddDbContext<AppDbContext>((provider, options) =>
-        {
-            DatabaseOptions databaseOptions = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-            options.UseNpgsql(databaseOptions.ConnectionString);
-        });
+        services.AddDbContextWithWolverineIntegration<AppDbContext>(
+            (provider, options) =>
+            {
+                DatabaseOptions databaseOptions = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
+                options.UseNpgsql(databaseOptions.ConnectionString);
+            },
+            WolverinePersistenceExtensions.MessageStoreSchemaName);
 
         return services;
     }

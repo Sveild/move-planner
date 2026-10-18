@@ -13,6 +13,7 @@ one as superseded by it.
 | [ADR-0001](#adr-0001-multi-project-clean-architecture) | Multi-project clean architecture | Accepted |
 | [ADR-0002](#adr-0002-adopt-wolverine-as-the-mediator-handler-pipeline-and-messaging-layer) | Adopt Wolverine as the mediator, handler pipeline and messaging layer | Accepted |
 | [ADR-0003](#adr-0003-adopt-exception-based-error-handling) | Adopt exception-based error handling | Accepted |
+| [ADR-0004](#adr-0004-wolverine-owns-its-message-storage-schema) | Wolverine owns its message storage schema | Accepted |
 
 Upcoming entries, to be recorded when the corresponding work lands:
 
@@ -218,5 +219,74 @@ Superseded by this decision: `Result<T>`, `Error`, `ErrorKind` and `ToHttpResult
   documented and followed (the exception handler and the architecture tests keep it honest).
 - Accepted cost: expected exceptions must be excluded from Wolverine's retry policies, or a normal
   "not found" would retry and dead-letter.
+
+
+## ADR-0004: Wolverine owns its message storage schema
+
+- **Status:** Accepted
+- **Date:** 2026-10-18
+
+### Context
+
+Wolverine's durable inbox and outbox need tables in the application database (the incoming and outgoing
+envelope tables). The plan assumed a single schema owner: map Wolverine's message tables into
+`AppDbContext` so that Entity Framework Core migrations create them and one migration bundle covers the
+whole database.
+
+That is not how Wolverine works. Its `MapWolverineEnvelopeStorage` does map the envelope entities
+(`Wolverine.EntityFrameworkCore.Internals.IncomingMessage` and `OutgoingMessage`) into the `DbContext`
+model, and `AddDbContextWithWolverineIntegration<T>` adds that mapping implicitly when it registers the
+context — but each mapping carries `ExcludeFromMigrations()`, so the tables never reach an Entity
+Framework Core migration. Wolverine uses Weasel for the schema of its own storage, and the Entity
+Framework Core model is there to persist the outbox: one `SaveChangesAsync` writes the outgoing messages
+and the entity changes in the same transaction, and the follow-up migration is empty for those tables.
+
+### Decision
+
+Wolverine owns its message storage schema; Entity Framework Core migrations own the application tables.
+Two owners, two clearly separated sets of tables.
+
+- `AppDbContext` is registered with `AddDbContextWithWolverineIntegration<AppDbContext>`, so Wolverine's
+  envelope mappings are part of the model and the outbox goes through the context's `SaveChangesAsync`.
+- The envelope mappings keep their `ExcludeFromMigrations()` marker and no Entity Framework Core
+  migration is created for them.
+- Those tables live in the dedicated `wolverine` schema, which is the schema passed both to
+  `PersistMessagesWithPostgresql` and to the `DbContext` registration, so the DDL and the model agree.
+- `AutoBuildMessageStorageOnStartup` is `AutoCreate.CreateOrUpdate` in Development and
+  `AutoCreate.None` everywhere else. Development gets a usable database on first start; a real
+  environment never patches its own schema at startup and fails fast instead, because `AutoCreate.None`
+  verifies at startup that the storage is provisioned.
+- A deployment therefore runs an explicit setup step (`dotnet run -- resources setup`, or
+  `IHost.SetupResources()`) next to the Entity Framework Core migration bundle. That is Wolverine's
+  documented production recipe.
+- Wolverine needs the connection string while the entry point runs, before a host applies configuration
+  sources added later. The tests therefore provide it the way a deployment does, as the
+  `Database__ConnectionString` environment variable, rather than through `ConfigureAppConfiguration`.
+- Handlers never call `SaveChanges`. `UseEntityFrameworkCoreTransactions()` with
+  `Policies.AutoApplyTransactions()` puts the transactional middleware around every handler that uses
+  the database, and that middleware commits and flushes the outbox when the handler completes.
+- Read-only handlers that do not use the database get no transaction at all; a handler that only reads
+  through the database is marked `[NonTransactional]` so it cannot open one.
+
+Alternatives considered:
+
+- **Map Wolverine's tables into the Entity Framework Core migrations**: not possible. The mappings ship
+  with `ExcludeFromMigrations()`, and overriding them would mean re-declaring Wolverine's schema by hand
+  and keeping that copy in step with every upgrade.
+- **`UseEntityFrameworkCoreWolverineManagedMigrations()`**: rejected. It has Weasel create and update the
+  application tables from the `DbContext` model at startup as well, which competes with the Entity
+  Framework Core migration pipeline that stays the owner of the application schema.
+
+### Consequences
+
+- One owner per table: Entity Framework Core migrations produce the application schema, Wolverine
+  produces `wolverine.*`.
+- The deploy issue has to run Wolverine's resource setup next to the migration bundle; the bundle alone
+  is not a complete database.
+- Tests and Development provision the message storage automatically, production does it explicitly.
+- An integration test asserts that Wolverine really created the envelope tables, and a unit test keeps
+  them excluded from the migrations, so the split cannot change silently.
+- Accepted cost: two schema mechanisms in one database, so "where does this table come from?" has to be
+  answered per schema rather than from the migrations alone.
 
 

@@ -2,6 +2,7 @@ using System.Data;
 using System.Net;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using MovePlanner.Infrastructure;
 using MovePlanner.Tests.Support;
 using Npgsql;
@@ -22,9 +23,13 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         ArgumentNullException.ThrowIfNull(postgres);
 
         _postgres = postgres;
-        _factory = factory.WithWebHostBuilder(builder => builder.UseSetting(
-            $"{DatabaseOptions.SectionName}:{nameof(DatabaseOptions.ConnectionString)}",
-            postgres.ConnectionString));
+        _factory = factory.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(
+            (_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>(
+                StringComparer.Ordinal)
+            {
+                [$"{DatabaseOptions.SectionName}:{nameof(DatabaseOptions.ConnectionString)}"] =
+                    postgres.ConnectionString,
+            })));
         _client = _factory.CreateClient();
     }
 

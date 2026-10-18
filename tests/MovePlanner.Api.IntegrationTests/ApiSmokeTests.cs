@@ -23,6 +23,7 @@ public sealed class ApiSmokeTests : IClassFixture<WebApplicationFactory<Program>
         ArgumentNullException.ThrowIfNull(postgres);
 
         _postgres = postgres;
+        Environment.SetEnvironmentVariable(AppDbContextFactory.ConnectionStringVariable, postgres.ConnectionString);
         _factory = factory.WithWebHostBuilder(builder => builder.ConfigureAppConfiguration(
             (_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>(
                 StringComparer.Ordinal)

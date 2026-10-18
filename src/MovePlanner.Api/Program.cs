@@ -7,7 +7,7 @@ using MovePlanner.Infrastructure;
 using Wolverine.Http;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Host.UseMovePlannerWolverine();
+builder.Host.UseMovePlannerWolverine(builder.Configuration, builder.Environment);
 builder.Services.AddWolverineHttp();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

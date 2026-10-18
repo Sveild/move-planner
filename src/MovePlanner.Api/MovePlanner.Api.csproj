@@ -9,6 +9,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.FluentValidation" />
+    <PackageReference Include="WolverineFx.Http" />
+  </ItemGroup>
+
+  <!--
+    Wolverine 6 no longer ships the runtime compiler with the core package. The default
+    TypeLoadMode.Dynamic compiles the handler and endpoint chains at startup, which needs the
+    Roslyn-backed generator this package registers. Production pre-generates the code
+    (TypeLoadMode.Static), so it is only referenced for Debug builds.
+  -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <PackageReference Include="WolverineFx.RuntimeCompilation" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MovePlanner.Application\MovePlanner.Application.csproj" />
     <ProjectReference Include="..\MovePlanner.Infrastructure\MovePlanner.Infrastructure.csproj" />
   </ItemGroup>

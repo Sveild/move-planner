@@ -1,10 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
+using JasperFx;
+using MovePlanner.Api;
 using MovePlanner.Api.Endpoints;
 using MovePlanner.Api.Errors;
 using MovePlanner.Application;
 using MovePlanner.Infrastructure;
+using Wolverine.Http;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseMovePlannerWolverine();
+builder.Services.AddWolverineHttp();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddApplication();
@@ -13,8 +18,9 @@ builder.Services.AddInfrastructure(builder.Configuration);
 var app = builder.Build();
 app.UseExceptionHandler();
 app.MapEndpoints();
+app.MapWolverineEndpoints();
 
-await app.RunAsync();
+return await app.RunJasperFxCommands(args);
 
 public partial class Program
 {

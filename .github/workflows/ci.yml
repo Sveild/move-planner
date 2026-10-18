@@ -56,7 +56,9 @@ jobs:
 
       - name: Generate coverage report
         if: always()
-        run: reportgenerator -reports:TestResults/*.cobertura.xml -targetdir:coveragereport -reporttypes:'Html;MarkdownSummaryGithub' -assemblyfilters:'+MovePlanner.Domain;+MovePlanner.Application;+MovePlanner.Infrastructure;+MovePlanner.Api' -classfilters:'-MovePlanner.Infrastructure.Migrations.*'
+        # JasperFx.Generated.* is emitted by the JasperFx source generator into every assembly that
+        # references Wolverine, so it is not our code. Migrations are generated as well.
+        run: reportgenerator -reports:TestResults/*.cobertura.xml -targetdir:coveragereport -reporttypes:'Html;MarkdownSummaryGithub' -assemblyfilters:'+MovePlanner.Domain;+MovePlanner.Application;+MovePlanner.Infrastructure;+MovePlanner.Api' -classfilters:'-MovePlanner.Infrastructure.Migrations.*;-JasperFx.Generated.*'
 
       - name: Add coverage to summary
         if: always()

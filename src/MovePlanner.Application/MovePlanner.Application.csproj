@@ -2,12 +2,7 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="WolverineFx" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <InternalsVisibleTo Include="MovePlanner.Application.Tests" />
   </ItemGroup>
 
   <ItemGroup>

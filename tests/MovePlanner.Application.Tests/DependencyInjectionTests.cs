@@ -29,9 +29,9 @@ public sealed class DependencyInjectionTests
 
         handler.Should().BeOfType<IncrementHandler>();
 
-        Result<int> result = await handler.HandleAsync(new Increment(41), TestContext.Current.CancellationToken);
+        int result = await handler.HandleAsync(new Increment(41), TestContext.Current.CancellationToken);
 
-        result.Value.Should().Be(42);
+        result.Should().Be(42);
     }
 
     [Fact]
@@ -53,15 +53,15 @@ public sealed class DependencyInjectionTests
 
     private sealed class IncrementHandler : ICommandHandler<Increment, int>
     {
-        public Task<Result<int>> HandleAsync(Increment command, CancellationToken cancellationToken)
-            => Task.FromResult(Result.Success(command.Value + 1));
+        public Task<int> HandleAsync(Increment command, CancellationToken cancellationToken)
+            => Task.FromResult(command.Value + 1);
     }
 
     private sealed record Echo(string Value);
 
     private sealed class EchoHandler : IQueryHandler<Echo, string>
     {
-        public Task<Result<string>> HandleAsync(Echo query, CancellationToken cancellationToken)
-            => Task.FromResult(Result.Success(query.Value));
+        public Task<string> HandleAsync(Echo query, CancellationToken cancellationToken)
+            => Task.FromResult(query.Value);
     }
 }

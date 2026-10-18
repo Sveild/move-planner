@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MovePlanner.Application.Common;
+using MovePlanner.Application.Common.Exceptions;
 using Xunit;
 
 namespace MovePlanner.Application.Tests;
@@ -11,12 +12,11 @@ public sealed class HandlerContractsTests
     {
         ICommandHandler<Increment, int> handler = new IncrementHandler();
 
-        Result<int> result = await handler.HandleAsync(
+        int response = await handler.HandleAsync(
             new Increment(41),
             TestContext.Current.CancellationToken);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(42);
+        response.Should().Be(42);
     }
 
     [Fact]
@@ -24,12 +24,11 @@ public sealed class HandlerContractsTests
     {
         IQueryHandler<Echo, string> handler = new EchoHandler();
 
-        Result<string> result = await handler.HandleAsync(
+        string response = await handler.HandleAsync(
             new Echo("hello"),
             TestContext.Current.CancellationToken);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be("hello");
+        response.Should().Be("hello");
     }
 
     [Fact]
@@ -37,22 +36,33 @@ public sealed class HandlerContractsTests
     {
         ICommandHandler<MarkSeen, Unit> handler = new MarkSeenHandler();
 
-        Result<Unit> result = await handler.HandleAsync(
+        Unit response = await handler.HandleAsync(
             new MarkSeen(Guid.NewGuid()),
             TestContext.Current.CancellationToken);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(default(Unit));
+        response.Should().Be(default(Unit));
+    }
+
+    [Fact]
+    public async Task A_handler_signals_an_expected_failure_by_throwing()
+    {
+        IQueryHandler<Echo, string> handler = new EchoHandler();
+
+        Func<Task> handle = () => handler.HandleAsync(
+            new Echo("missing"),
+            TestContext.Current.CancellationToken);
+
+        await handle.Should().ThrowAsync<NotFoundException>();
     }
 
     private sealed record Increment(int Value);
 
     private sealed class IncrementHandler : ICommandHandler<Increment, int>
     {
-        public Task<Result<int>> HandleAsync(Increment command, CancellationToken cancellationToken)
+        public Task<int> HandleAsync(Increment command, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(Result.Success(command.Value + 1));
+            return Task.FromResult(command.Value + 1);
         }
     }
 
@@ -60,10 +70,16 @@ public sealed class HandlerContractsTests
 
     private sealed class EchoHandler : IQueryHandler<Echo, string>
     {
-        public Task<Result<string>> HandleAsync(Echo query, CancellationToken cancellationToken)
+        public Task<string> HandleAsync(Echo query, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(Result.Success(query.Value));
+
+            if (string.Equals(query.Value, "missing", StringComparison.Ordinal))
+            {
+                throw new NotFoundException("The echo is missing.");
+            }
+
+            return Task.FromResult(query.Value);
         }
     }
 
@@ -71,10 +87,10 @@ public sealed class HandlerContractsTests
 
     private sealed class MarkSeenHandler : ICommandHandler<MarkSeen, Unit>
     {
-        public Task<Result<Unit>> HandleAsync(MarkSeen command, CancellationToken cancellationToken)
+        public Task<Unit> HandleAsync(MarkSeen command, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult(Result.Success(default(Unit)));
+            return Task.FromResult(default(Unit));
         }
     }
 }

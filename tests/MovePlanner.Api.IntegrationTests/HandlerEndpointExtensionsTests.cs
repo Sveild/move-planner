@@ -3,12 +3,15 @@ using System.Net.Http.Json;
 using System.Text;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using MovePlanner.Api.Endpoints;
+using MovePlanner.Api.Errors;
 using MovePlanner.Application.Common;
+using MovePlanner.Application.Common.Exceptions;
 using Xunit;
 
 namespace MovePlanner.Api.IntegrationTests;
@@ -22,12 +25,15 @@ public sealed class HandlerEndpointExtensionsTests : IAsyncLifetime
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
+        builder.Services.AddProblemDetails();
+        builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
         builder.Services.AddScoped<IQueryHandler<EchoQuery, string>, EchoQueryHandler>();
         builder.Services.AddScoped<ICommandHandler<UppercaseCommand, string>, UppercaseCommandHandler>();
         builder.Services.AddScoped<ICommandHandler<RenameCommand, string>, RenameCommandHandler>();
         builder.Services.AddScoped<ICommandHandler<DeleteCommand, string>, DeleteCommandHandler>();
 
         _app = builder.Build();
+        _app.UseExceptionHandler();
 
         RouteGroupBuilder dummy = _app.MapGroup("/dummy");
         dummy.MapGetHandler<EchoRequest, EchoQuery, string>("/{value}");
@@ -46,7 +52,7 @@ public sealed class HandlerEndpointExtensionsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Get_handler_binds_the_request_maps_it_and_returns_the_result()
+    public async Task Get_handler_binds_the_request_maps_it_and_returns_the_response()
     {
         HttpResponseMessage response = await _client.GetAsync(Relative("/dummy/hello"), TestContext.Current.CancellationToken);
 
@@ -56,7 +62,7 @@ public sealed class HandlerEndpointExtensionsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Post_handler_binds_the_body_maps_it_and_returns_the_result()
+    public async Task Post_handler_binds_the_body_maps_it_and_returns_the_response()
     {
         using StringContent body = new("\"hello\"", Encoding.UTF8, "application/json");
 
@@ -68,7 +74,7 @@ public sealed class HandlerEndpointExtensionsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Put_handler_binds_the_route_and_the_body_maps_them_and_returns_the_result()
+    public async Task Put_handler_binds_the_route_and_the_body_maps_them_and_returns_the_response()
     {
         Guid id = Guid.NewGuid();
         using StringContent body = new("\"Hello\"", Encoding.UTF8, "application/json");
@@ -81,7 +87,7 @@ public sealed class HandlerEndpointExtensionsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Delete_handler_binds_the_route_maps_it_and_returns_the_result()
+    public async Task Delete_handler_binds_the_route_maps_it_and_returns_the_response()
     {
         HttpResponseMessage response = await _client.DeleteAsync(Relative("/dummy/hello"), TestContext.Current.CancellationToken);
 
@@ -91,14 +97,14 @@ public sealed class HandlerEndpointExtensionsTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task A_failed_result_becomes_a_problem_response()
+    public async Task A_handler_exception_becomes_a_problem_response()
     {
         HttpResponseMessage response =
             await _client.GetAsync(Relative("/dummy/missing"), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await response.Content.ReadFromJsonAsync<ProblemResponse>(TestContext.Current.CancellationToken))
-            .Should().Be(new ProblemResponse("dummy.not_found", "Not found"));
+            .Should().Be(new ProblemResponse(StatusCodes.Status404NotFound, "Not found"));
     }
 
     [Fact]
@@ -133,7 +139,7 @@ public sealed class HandlerEndpointExtensionsTests : IAsyncLifetime
 
     private static Uri Relative(string path) => new(path, UriKind.Relative);
 
-    private sealed record ProblemResponse(string Code, string Title);
+    private sealed record ProblemResponse(int Status, string Title);
 
     private sealed record EchoQuery(string Value);
 
@@ -180,43 +186,46 @@ public sealed class HandlerEndpointExtensionsTests : IAsyncLifetime
 
     private sealed class EchoQueryHandler : IQueryHandler<EchoQuery, string>
     {
-        public Task<Result<string>> HandleAsync(EchoQuery query, CancellationToken cancellationToken)
+        public Task<string> HandleAsync(EchoQuery query, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            return Task.FromResult(string.Equals(query.Value, "missing", StringComparison.Ordinal)
-                ? Result.Failure<string>(Error.NotFound("dummy.not_found", "The dummy is missing."))
-                : Result.Success($"query:{query.Value}"));
+            if (string.Equals(query.Value, "missing", StringComparison.Ordinal))
+            {
+                throw new NotFoundException("The dummy is missing.");
+            }
+
+            return Task.FromResult($"query:{query.Value}");
         }
     }
 
     private sealed class UppercaseCommandHandler : ICommandHandler<UppercaseCommand, string>
     {
-        public Task<Result<string>> HandleAsync(UppercaseCommand command, CancellationToken cancellationToken)
+        public Task<string> HandleAsync(UppercaseCommand command, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            return Task.FromResult(Result.Success(command.Value.ToUpperInvariant()));
+            return Task.FromResult(command.Value.ToUpperInvariant());
         }
     }
 
     private sealed class RenameCommandHandler : ICommandHandler<RenameCommand, string>
     {
-        public Task<Result<string>> HandleAsync(RenameCommand command, CancellationToken cancellationToken)
+        public Task<string> HandleAsync(RenameCommand command, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            return Task.FromResult(Result.Success($"renamed:{command.Id}:{command.Value}"));
+            return Task.FromResult($"renamed:{command.Id}:{command.Value}");
         }
     }
 
     private sealed class DeleteCommandHandler : ICommandHandler<DeleteCommand, string>
     {
-        public Task<Result<string>> HandleAsync(DeleteCommand command, CancellationToken cancellationToken)
+        public Task<string> HandleAsync(DeleteCommand command, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            return Task.FromResult(Result.Success($"deleted:{command.Value}"));
+            return Task.FromResult($"deleted:{command.Value}");
         }
     }
 }

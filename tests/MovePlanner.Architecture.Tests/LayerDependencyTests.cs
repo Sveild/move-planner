@@ -75,6 +75,28 @@ public sealed class LayerDependencyTests
             "handlers signal failure by throwing, not by returning Result or Error values (ADR-0003)");
     }
 
+    [Fact]
+    public void Custom_handler_contract_and_registration_no_longer_exist()
+    {
+        string[] removed =
+        [
+            "ICommandHandler`2", "IQueryHandler`2", "Unit",
+            "HandlerEndpointExtensions", "IQueryRequest`1", "ICommandRequest`1",
+        ];
+
+        string[] remaining =
+        [
+            .. new[] { ApplicationAssembly, ApiAssembly }
+                .SelectMany(assembly => Assembly.Load(assembly).GetTypes())
+                .Select(type => type.Name)
+                .Where(name => removed.Contains(name, StringComparer.Ordinal)),
+        ];
+
+        remaining.Should().BeEmpty(
+            "handlers are found by Wolverine's discovery and called through IMessageBus, "
+            + "not through a custom contract (ADR-0002)");
+    }
+
     private static void AssertNoDependencyOn(string assembly, params string[] forbidden)
     {
         TestResult result = Types

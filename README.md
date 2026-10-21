@@ -11,8 +11,12 @@ A web app for planning an international move. It is built from modules, starting
 **Backend**
 
 - .NET 10 / ASP.NET Core
+- Wolverine for handler discovery, the handler middleware pipeline, HTTP endpoints and the
+  PostgreSQL-backed outbox
+- FluentValidation for request validation (planned; the validation issue is in the current milestone)
 - PostgreSQL through Entity Framework Core
-- xUnit v3 on Microsoft.Testing.Platform, with Testcontainers for the infrastructure and integration tests
+- xUnit v3 on Microsoft.Testing.Platform, with Testcontainers for the tests that need PostgreSQL and
+  Wolverine's tracked sessions for the tests that wait on handlers
 
 ## Prerequisites
 
@@ -32,16 +36,51 @@ projects below it:
 - `src/MovePlanner.Api` — HTTP entry point and composition root. References Application and
   Infrastructure.
 
+### Requests
+
+A request travels through Wolverine. An endpoint in `src/MovePlanner.Api` binds the `Application`
+command or query directly, hands it to the message bus and returns the result; the handler in
+`src/MovePlanner.Application` runs inside Wolverine's middleware pipeline, which opens the database
+transaction and flushes the outbox around it. Endpoints hold no business logic — they bind, dispatch
+and shape the response. The `[WolverineGet]`, `[WolverinePost]`, `[WolverinePut]` and
+`[WolverineDelete]` attributes carry the routes, and `MapWolverineEndpoints()` is the only mapping
+([ADR-0005](decisions.md#adr-0005-http-endpoints-are-thin-adapters-over-the-message-bus)).
+
+Commands, queries and DTOs are immutable records and form the public API contract. They use
+primitives and never expose domain entities or value objects
+([ADR-0002](decisions.md#adr-0002-adopt-wolverine-as-the-mediator-handler-pipeline-and-messaging-layer)).
+Handlers return the response value or nothing and signal expected failures with typed exceptions,
+which `GlobalExceptionHandler` in `Api` turns into ProblemDetails responses
+([ADR-0003](decisions.md#adr-0003-adopt-exception-based-error-handling)).
+
+Validation lives in `Application` next to the command or query, as FluentValidation validators that
+run in the handler pipeline, so HTTP and non-HTTP callers share one path. It is not added yet.
+
+Domain events go through the transactional outbox: Wolverine's Entity Framework Core middleware
+writes outgoing messages in the same transaction as the entity changes, and a background dispatcher
+delivers them afterwards. The outbox is provisioned, but no domain events are published yet.
+
+### Storage
+
+Entity Framework Core migrations own the application tables. Wolverine owns its message storage in a
+separate `wolverine` schema, and creates or updates it on startup in Development only. Every other
+environment is provisioned explicitly by the deployment and fails at startup when the storage is
+missing ([ADR-0004](decisions.md#adr-0004-wolverine-owns-its-message-storage-schema)).
+
 The tests live in `tests`:
 
 - `MovePlanner.Domain.Tests`, `MovePlanner.Application.Tests` and `MovePlanner.Infrastructure.Tests`
-  hold the unit tests of each layer.
+  hold the unit tests of each layer. Handlers are called as plain methods, with fakes for their
+  dependencies.
 - `MovePlanner.Architecture.Tests` fails the build when a dependency points the wrong way or a
   Wolverine convention is broken (where handlers, endpoints and validators live, immutable commands
   and queries, exceptions instead of result wrappers).
-- `MovePlanner.Api.IntegrationTests` exercises the API end to end.
-- `MovePlanner.Tests.Support` holds shared fixtures, such as the PostgreSQL container used by the
-  infrastructure and integration tests.
+- `MovePlanner.Api.IntegrationTests` boots the real application with `WebApplicationFactory` against
+  a PostgreSQL container, so Wolverine discovers the `Application` assembly and provisions its schema
+  itself. Tests of asynchronous flows use Wolverine's tracked sessions (`TrackActivity`) to wait for
+  the handlers instead of sleeping.
+- `MovePlanner.Tests.Support` holds the shared fixtures, such as the PostgreSQL container and the
+  isolated database a test class can own.
 
 ## Development
 
@@ -112,6 +151,28 @@ Database__ConnectionString="Host=localhost;Port=5432;Database=moveplanner;Userna
   dotnet ef migrations list --project src/MovePlanner.Infrastructure --startup-project src/MovePlanner.Api
 ```
 
+The migrations cover the application tables only. Wolverine keeps its message storage in the
+`wolverine` schema, which Development creates or updates when the API starts
+([ADR-0004](decisions.md#adr-0004-wolverine-owns-its-message-storage-schema)). A deployment runs that
+setup step explicitly instead:
+
+```sh
+Database__ConnectionString="Host=localhost;Port=5432;Database=moveplanner;Username=moveplanner;Password=moveplanner" \
+  dotnet run --project src/MovePlanner.Api -- resources setup
+```
+
 ## Decisions
 
-Architecture decisions are recorded in [decisions.md](decisions.md).
+Architecture decisions are recorded in [decisions.md](decisions.md), each with its context,
+decision and consequences:
+
+- [ADR-0001](decisions.md#adr-0001-multi-project-clean-architecture) — multi-project clean
+  architecture
+- [ADR-0002](decisions.md#adr-0002-adopt-wolverine-as-the-mediator-handler-pipeline-and-messaging-layer)
+  — Wolverine as the mediator, handler pipeline and messaging layer
+- [ADR-0003](decisions.md#adr-0003-adopt-exception-based-error-handling) — exception-based error
+  handling
+- [ADR-0004](decisions.md#adr-0004-wolverine-owns-its-message-storage-schema) — Wolverine owns its
+  message storage schema
+- [ADR-0005](decisions.md#adr-0005-http-endpoints-are-thin-adapters-over-the-message-bus) — HTTP
+  endpoints are thin adapters over the message bus

@@ -36,7 +36,9 @@ The tests live in `tests`:
 
 - `MovePlanner.Domain.Tests`, `MovePlanner.Application.Tests` and `MovePlanner.Infrastructure.Tests`
   hold the unit tests of each layer.
-- `MovePlanner.Architecture.Tests` fails the build when a dependency points the wrong way.
+- `MovePlanner.Architecture.Tests` fails the build when a dependency points the wrong way or a
+  Wolverine convention is broken (where handlers, endpoints and validators live, immutable commands
+  and queries, exceptions instead of result wrappers).
 - `MovePlanner.Api.IntegrationTests` exercises the API end to end.
 - `MovePlanner.Tests.Support` holds shared fixtures, such as the PostgreSQL container used by the
   infrastructure and integration tests.

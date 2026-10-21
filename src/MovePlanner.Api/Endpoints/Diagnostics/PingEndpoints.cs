@@ -19,6 +19,9 @@ public static class PingEndpoints
     /// <returns>The message the query carries.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="bus"/> is <see langword="null"/>.</exception>
     [WolverineGet("/ping")]
+    [Tags("Diagnostics")]
+    [EndpointDescription("Echoes the message back to the caller.")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public static Task<string> Ping(
         [FromQuery] PingQuery query,
         IMessageBus bus,

@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using JasperFx;
 using MovePlanner.Api;
-using MovePlanner.Api.Endpoints;
 using MovePlanner.Api.Errors;
 using MovePlanner.Infrastructure;
 using Wolverine.Http;
@@ -15,7 +14,6 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 app.UseExceptionHandler();
-app.MapEndpoints();
 app.MapWolverineEndpoints();
 
 return await app.RunJasperFxCommands(args);

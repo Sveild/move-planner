@@ -14,6 +14,7 @@ one as superseded by it.
 | [ADR-0002](#adr-0002-adopt-wolverine-as-the-mediator-handler-pipeline-and-messaging-layer) | Adopt Wolverine as the mediator, handler pipeline and messaging layer | Accepted |
 | [ADR-0003](#adr-0003-adopt-exception-based-error-handling) | Adopt exception-based error handling | Accepted |
 | [ADR-0004](#adr-0004-wolverine-owns-its-message-storage-schema) | Wolverine owns its message storage schema | Accepted |
+| [ADR-0005](#adr-0005-http-endpoints-are-thin-adapters-over-the-message-bus) | HTTP endpoints are thin adapters over the message bus | Accepted |
 
 Upcoming entries, to be recorded when the corresponding work lands:
 
@@ -290,3 +291,71 @@ Alternatives considered:
   answered per schema rather than from the migrations alone.
 
 
+
+## ADR-0005: HTTP endpoints are thin adapters over the message bus
+
+- **Status:** Accepted
+- **Date:** 2026-10-21
+
+### Context
+
+The Api layer carried hand-written plumbing: endpoint extensions (`MapGetHandler`, `MapPostHandler`,
+`MapPutHandler`, `MapDeleteHandler`) that turned a request into a command or query, plus a manual
+`MapEndpoints()` that mapped a route group per feature. Wolverine.HTTP generates endpoints from
+attributes instead, and the intended shape is that an endpoint binds the Application command or query
+directly and hands it to the message bus, so HTTP callers get the same handler, validation and
+transaction as every other caller.
+
+Wolverine.HTTP binds parameters by convention, and the conventions decide the design. A spike against
+the real host answered the two questions the endpoints depend on:
+
+- A record parameter on `[WolverineGet]` is treated as the request body. A GET reads no body, so the
+  request fails with a 500. Annotated with `[FromQuery]` the record is flattened into one query string
+  value per member, so `/ping?message=hello` binds `PingQuery("hello")`.
+- On `[WolverinePost("/route/{id}")]` with `(Guid id, SomeCommand command)`, `id` binds from the route
+  template by name and `command` from the JSON body without an attribute. A route id therefore arrives as
+  its own endpoint parameter and is merged into the command in the endpoint.
+- `Results.Created(...)` produces 201 with a `Location` header, `Results.NoContent()` produces 204, and a
+  plain value produces 200.
+- Missing query string values are not validated at the transport level: the member stays `null` and the
+  request still succeeds.
+
+### Decision
+
+- Endpoint classes live in `Api/Endpoints/<Feature>`, one class per feature, with public static methods
+  carrying `[WolverineGet]`, `[WolverinePost]`, `[WolverinePut]` or `[WolverineDelete]`. Wolverine.HTTP
+  does not discover non-public endpoint classes, so the class and its methods are public.
+- `MapWolverineEndpoints()` in `Program.cs` is the only endpoint mapping. There is no `MapEndpoints()`
+  extension and no feature route-group extension; the routes live in the attributes.
+- Endpoints bind the Application contract directly, with no Api request DTOs and no `ToCommand` mapping:
+  `[FromQuery]` for a query record on GET and DELETE, an unannotated parameter for a command body on POST
+  and PUT, and route parameters by name merged into the command (`command with { Id = id }`).
+- The endpoint returns the handler's value, or an `IResult` when the status code matters (201 with
+  `Location` on create, 204 on delete).
+- Endpoints never catch exceptions. A handler that fails throws one of the typed exceptions from
+  ADR-0003 and `GlobalExceptionHandler` turns it into a ProblemDetails response.
+- Endpoints hold no business logic and never touch `AppDbContext`; they only bind, dispatch through
+  `IMessageBus.InvokeAsync` and shape the result.
+
+Alternatives considered:
+
+- **Keep the hand-written `Map*Handler` extensions**: rejected. They recreated what Wolverine.HTTP
+  generates, and every new endpoint needed new plumbing.
+- **Separate Api request DTOs plus mapping**: rejected. It duplicates types for a single client.
+- **Endpoint-as-handler (`[WolverinePost]` on the handler itself)**: rejected. It moves use cases into
+  Api and makes them unusable by non-HTTP callers.
+- **Binding a query record without `[FromQuery]`**: rejected. It compiles and then fails with a 500 at
+  request time.
+
+### Consequences
+
+- An endpoint is one short method: bind, dispatch, shape the response. Adding a use case is a new method,
+  not new plumbing.
+- `[FromQuery]` comes from `Microsoft.AspNetCore.Mvc` even though MVC is not in use. Without it a GET or
+  DELETE record breaks at runtime, so it is the one convention to check in review.
+- Merging a route id into the command is repeated per endpoint, because the route value and the body are
+  separate parameters.
+- Handler middleware (validation, transactions) applies to the dispatched message automatically, so an
+  endpoint test proves transport and binding only; business rules are tested at the handler.
+- The OpenAPI document is generated from the same attributes, so the endpoints appear there as soon as the
+  document itself is exposed.

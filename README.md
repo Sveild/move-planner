@@ -105,6 +105,14 @@ Start the API; it needs a configured connection string and a running database, d
 dotnet run --project src/MovePlanner.Api
 ```
 
+In Development the API serves the OpenAPI document at `/openapi/v1.json` and a Scalar UI at
+`/scalar/v1`. The document can also be generated without starting the API, which is how a build or a
+deployment captures it:
+
+```sh
+dotnet run --project src/MovePlanner.Api -- openapi
+```
+
 The analyzer and suppression rules are in [CONTRIBUTING.md](CONTRIBUTING.md), and the conventions for
 automated agents are in [AGENTS.md](AGENTS.md).
 
@@ -176,3 +184,5 @@ decision and consequences:
   message storage schema
 - [ADR-0005](decisions.md#adr-0005-http-endpoints-are-thin-adapters-over-the-message-bus) — HTTP
   endpoints are thin adapters over the message bus
+- [ADR-0006](decisions.md#adr-0006-openapi-documents-the-endpoints-and-scalar-renders-it-in-development)
+  — OpenAPI documents the endpoints and Scalar renders it in Development

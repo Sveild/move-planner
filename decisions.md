@@ -15,6 +15,7 @@ one as superseded by it.
 | [ADR-0003](#adr-0003-adopt-exception-based-error-handling) | Adopt exception-based error handling | Accepted |
 | [ADR-0004](#adr-0004-wolverine-owns-its-message-storage-schema) | Wolverine owns its message storage schema | Accepted |
 | [ADR-0005](#adr-0005-http-endpoints-are-thin-adapters-over-the-message-bus) | HTTP endpoints are thin adapters over the message bus | Accepted |
+| [ADR-0006](#adr-0006-openapi-documents-the-endpoints-and-scalar-renders-it-in-development) | OpenAPI documents the endpoints and Scalar renders it in Development | Accepted |
 
 Upcoming entries, to be recorded when the corresponding work lands:
 
@@ -359,3 +360,69 @@ Alternatives considered:
   endpoint test proves transport and binding only; business rules are tested at the handler.
 - The OpenAPI document is generated from the same attributes, so the endpoints appear there as soon as the
   document itself is exposed.
+
+## ADR-0006: OpenAPI documents the endpoints and Scalar renders it in Development
+
+- **Status:** Accepted
+- **Date:** 2026-10-21
+
+### Context
+
+The endpoints are declared with Wolverine.HTTP attributes and the Application records are their
+schemas, so the document has to come from the same source as the endpoints rather than from a second
+description maintained by hand. Swashbuckle is the older option and Wolverine.HTTP still integrates
+with it, but it is another dependency for a document that ASP.NET Core now generates itself.
+
+Wolverine.HTTP already describes each chain as an `ApiDescription` and registers an
+`IApiDescriptionProvider`, and `AddOpenApi()` registers the `IDocumentProvider` that Wolverine's own
+`openapi` command resolves. The built-in generator therefore sees the Wolverine endpoints without
+extra glue, and the command serializes the document without starting the host, so it needs no
+database.
+
+Three details of the generated document were settled with a spike against the real host:
+
+- The document is generated from endpoint metadata, which includes the attributes on the endpoint
+  method: `[Tags]` sets the tag, XML doc comments become the summary and description, and
+  `[ProducesResponseType]` adds the responses that cannot be inferred.
+- A response type is inferred only from the declared return type. An endpoint that returns `IResult`
+  to choose 201 or 204 is documented as a 200 with an `IResult` schema, which is not what it returns.
+- A `[FromQuery]` record is flattened into one parameter per member, and each parameter is named
+  after the member, so the document would show `Message` where the JSON bodies use `message`.
+
+### Decision
+
+- `Microsoft.AspNetCore.OpenApi` generates the document (`AddOpenApi()` with `MapOpenApi()` at
+  `/openapi/v1.json`) and Scalar renders it (`MapScalarApiReference()` at `/scalar/v1`).
+- Both routes are mapped in Development only. A build or a deployment that needs the document runs the
+  `openapi` command instead, which does not start the host.
+- The endpoint conventions that feed the document are: a `[Tags]` attribute per feature, XML doc
+  comments for the summary and description, and `[ProducesResponseType(typeof(...), status)]` for
+  every status the return type does not imply — 201 on create, 204 on delete, and 4xx and 5xx with
+  `ProblemDetails`.
+- Two operation transformers in `Api` fix what the generator cannot know: query string parameters are
+  documented in camelCase, and the placeholder 200 with the `IResult` schema is removed when the
+  endpoint declares another success response.
+- The document is part of the contract. An integration test reads it and asserts the shape of an
+  endpoint, and unit tests cover the transformers.
+
+Alternatives considered:
+
+- **Swashbuckle.AspNetCore**: rejected. Wolverine.HTTP supports it, but it is a second generator
+  dependency for output the framework now produces, and its UI would be replaced by Scalar anyway.
+- **Keeping the placeholder 200 with the `IResult` schema**: rejected. It documents a status code the
+  endpoint never returns and a schema that says nothing about the body.
+- **Renaming the record members to camelCase**: rejected. It moves a documentation detail into the
+  Application contract and breaks C# naming.
+- **Serving the document in every environment**: rejected for now. No consumer needs it yet, and a
+  public document would have to be reviewed like any other production surface.
+
+### Consequences
+
+- The document is generated from the code that serves the requests, so it cannot drift from the
+  endpoints without the integration test noticing.
+- Every endpoint carries its feature tag and declares the status codes its return type does not imply;
+  that is now part of the review checklist for an endpoint.
+- Accepted cost: the two transformers depend on the Microsoft.OpenApi object model, which changes
+  between major versions.
+- Accepted cost: capturing the document from a deployment needs the `openapi` command rather than an
+  HTTP call.

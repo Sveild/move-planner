@@ -8,93 +8,86 @@ namespace MovePlanner.Architecture.Tests;
 
 public sealed class LayerDependencyTests
 {
-    private const string DomainAssembly = "MovePlanner.Domain";
-    private const string ApplicationAssembly = "MovePlanner.Application";
-    private const string InfrastructureAssembly = "MovePlanner.Infrastructure";
-    private const string ApiAssembly = "MovePlanner.Api";
-
     [Fact]
     public void Domain_depends_on_no_other_layer()
     {
-        AssertNoDependencyOn(DomainAssembly, ApplicationAssembly, InfrastructureAssembly, ApiAssembly);
+        AssertNoDependencyOn(
+            Architecture.DomainName,
+            Architecture.ApplicationName,
+            Architecture.InfrastructureName,
+            Architecture.ApiName);
+
+        AssertNoReferenceTo(Architecture.Domain, "MovePlanner");
     }
 
     [Fact]
-    public void Domain_depends_on_no_aspnetcore_or_efcore_types()
+    public void Domain_depends_on_no_wolverine_aspnetcore_or_efcore_types()
     {
-        AssertNoDependencyOn(DomainAssembly, "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore");
+        AssertNoDependencyOn(
+            Architecture.DomainName,
+            "Wolverine",
+            "Microsoft.AspNetCore",
+            "Microsoft.EntityFrameworkCore");
+
+        AssertNoReferenceTo(Architecture.Domain, "Wolverine", "Microsoft.AspNetCore", "Microsoft.EntityFrameworkCore");
     }
 
     [Fact]
     public void Application_depends_on_domain_only()
     {
         AssertNoDependencyOn(
-            ApplicationAssembly,
-            InfrastructureAssembly,
-            ApiAssembly,
+            Architecture.ApplicationName,
+            Architecture.InfrastructureName,
+            Architecture.ApiName,
+            "Wolverine.Http",
+            "Microsoft.AspNetCore",
+            "Microsoft.EntityFrameworkCore");
+
+        AssertNoReferenceTo(
+            Architecture.Application,
+            Architecture.InfrastructureName,
+            Architecture.ApiName,
+            "Wolverine.Http",
             "Microsoft.AspNetCore",
             "Microsoft.EntityFrameworkCore");
     }
 
     [Fact]
-    public void Infrastructure_depends_on_no_api()
+    public void Application_may_reference_wolverine_but_not_its_http_package()
     {
-        AssertNoDependencyOn(InfrastructureAssembly, ApiAssembly);
+        Architecture.References(Architecture.Application, "Wolverine").Should().BeTrue(
+            "handlers are found through Wolverine's own types, so Application must reference WolverineFx");
+
+        Architecture.MatchingReferences(Architecture.Application, "Wolverine.Http").Should().BeEmpty(
+            "only the Api layer talks HTTP, but Application references: {0}",
+            string.Join(", ", Architecture.MatchingReferences(Architecture.Application, "Wolverine.Http")));
     }
 
     [Fact]
-    public void Handlers_depend_on_no_http_types()
+    public void Only_the_api_references_wolverine_http()
     {
-        TestResult result = Types
-            .InAssembly(Assembly.Load(ApplicationAssembly))
-            .That()
-            .HaveNameEndingWith("Handler", StringComparison.Ordinal)
-            .Should()
-            .NotHaveDependencyOnAny("Microsoft.AspNetCore")
-            .GetResult();
+        foreach (Assembly layer in Architecture.ExceptApi)
+        {
+            string[] references = Architecture.MatchingReferences(layer, "Wolverine.Http");
 
-        result.IsSuccessful.Should().BeTrue(
-            "handlers must not reference HTTP types, but these do: {0}",
-            string.Join(", ", result.FailingTypeNames ?? []));
+            references.Should().BeEmpty(
+                "{0} must not reference Wolverine.HTTP, but it references: {1}",
+                layer.GetName().Name,
+                string.Join(", ", references));
+        }
+
+        Architecture.MatchingReferences(Architecture.Api, "Wolverine.Http").Should().NotBeEmpty(
+            "the endpoints are built on Wolverine.HTTP");
     }
 
     [Fact]
-    public void Result_and_error_types_no_longer_exist()
+    public void Infrastructure_may_reference_wolverine_persistence_but_not_the_api()
     {
-        string[] removed = ["Result", "Result`1", "Error", "ErrorKind", "ResultExtensions"];
+        Architecture.References(Architecture.Infrastructure, "Wolverine.EntityFrameworkCore").Should().BeTrue(
+            "Wolverine's outbox is integrated into the DbContext registration, so Infrastructure may reference its persistence packages");
 
-        string[] remaining =
-        [
-            .. new[] { ApplicationAssembly, ApiAssembly }
-                .SelectMany(assembly => Assembly.Load(assembly).GetTypes())
-                .Select(type => type.Name)
-                .Where(name => removed.Contains(name, StringComparer.Ordinal)),
-        ];
-
-        remaining.Should().BeEmpty(
-            "handlers signal failure by throwing, not by returning Result or Error values (ADR-0003)");
-    }
-
-    [Fact]
-    public void Custom_handler_contract_and_registration_no_longer_exist()
-    {
-        string[] removed =
-        [
-            "ICommandHandler`2", "IQueryHandler`2", "Unit",
-            "HandlerEndpointExtensions", "IQueryRequest`1", "ICommandRequest`1",
-        ];
-
-        string[] remaining =
-        [
-            .. new[] { ApplicationAssembly, ApiAssembly }
-                .SelectMany(assembly => Assembly.Load(assembly).GetTypes())
-                .Select(type => type.Name)
-                .Where(name => removed.Contains(name, StringComparer.Ordinal)),
-        ];
-
-        remaining.Should().BeEmpty(
-            "handlers are found by Wolverine's discovery and called through IMessageBus, "
-            + "not through a custom contract (ADR-0002)");
+        AssertNoDependencyOn(Architecture.InfrastructureName, Architecture.ApiName);
+        Architecture.References(Architecture.Infrastructure, Architecture.ApiName).Should().BeFalse();
     }
 
     private static void AssertNoDependencyOn(string assembly, params string[] forbidden)
@@ -110,5 +103,16 @@ public sealed class LayerDependencyTests
             assembly,
             string.Join(", ", forbidden),
             string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    private static void AssertNoReferenceTo(Assembly assembly, params string[] forbidden)
+    {
+        string[] references = Architecture.MatchingReferences(assembly, forbidden);
+
+        references.Should().BeEmpty(
+            "{0} must not reference {1}, but it references: {2}",
+            assembly.GetName().Name,
+            string.Join(", ", forbidden),
+            string.Join(", ", references));
     }
 }
